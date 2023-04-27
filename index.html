@@ -1,0 +1,104 @@
+<html>
+    <head>
+        <title>App Comercial | JavaScript</title>
+        <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+        <link href="style.css" type="text/css" rel="stylesheet" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta charset="UTF-8">
+    </head>
+    <body>
+         <h1>Compartilhamento de Telas</h1>
+         <button id="startSharing">Compartilhar Tela</button>
+         <video muted id="screenVideoShare" autoplay playsinline></video>
+         <script>
+              const startSharing = document.getElementById('startSharing');
+              const videoScreen = document.getElementById('screenVideoShare');
+
+              let mediaRecorder;
+              let recordedChunks = [];
+
+              startSharing.addEventListener('click',async()=>{
+                   try{
+                        const screenStrem = await navigator.mediaDevices.getDisplayMedia({
+                           video:{
+                                cursor:'always'
+                           }, 
+                           audio:false
+                        });
+
+                        const audioStrem = await navigator.mediaDevices.getUserMedia({
+                            audio:true
+                        });
+
+                        const combinedStrem = new MediaStream([
+                         ...screenStrem.getVideoTracks(),
+                         ...audioStrem.getAudioTracks(),
+                        ]);
+
+                        videoScreen.srcObject = combinedStrem;
+
+                        videoScreen.onloadedmetadata = () =>{
+                            videoScreen.play();
+                        }
+
+                        combinedStrem.getVideoTracks()[0].onended = ()=>{
+                            stopSharing();
+                        }
+
+                        startRecording(combinedStrem);
+
+                        
+
+                   }catch(error){
+                      console.log("O seguinte erro ocorreu"+error);
+                   }
+
+                   function startRecording(mediaStream){
+                      mediaRecorder = new MediaRecorder(mediaStream,{mineType:"video/webm"});
+
+                      mediaRecorder.ondataavailable = (event) =>{
+                          console.log(event.data.size);
+                          recordedChunks.push(event.data);
+
+                          mediaRecorder.start();
+
+                          mediaRecorder.onStop = () =>{
+                              downloadVideo();
+                          }
+                      }
+
+                     /// let interval = setInterval(function(){
+                       ///   mediaRecorder.requestData();
+                     /// },500);
+                   }
+
+                   function stopSharing(){
+                      if(videoScreen.srcObject){
+                          videoScreen.srcObject.getTracks().forEach(track=> track.stop());
+                          videoScreen.srcObject = null;
+                      }
+
+                      if(mediaRecorder){
+                         mediaRecorder.stop();
+                      }
+                   }
+
+                   function downloadVideo(){
+                     const blob = new Blob(recordedChunks,{type:"video/webn"});
+                     const url = URL.createObjectURL(blob);
+
+                     const a = document.createElement('a');
+                     document.body.appendChild(a);
+                     a.style.display = "none";
+                     a.href = url;
+                     a.download = "video-navegador.mp4";
+                     a.click();
+                     window.URL.revokeObjectURL(url);
+                     document.body.removeChild(a);
+                   }
+              })
+         </script>
+    </body>
+</html>
+
+<!--Tempo da aula:34:22-->
